@@ -1,0 +1,447 @@
+<style>
+    :host {
+      --brand1: #A92947; /* rojo LASID */
+      --brand2: #224C87; /* azul LASID */
+  
+      /* Tabs */
+      --tab-bg: #F4F7FB;        /* fondo inactivo */
+      --tab-bg-hover: #E9F0FA;  /* hover inactivo */
+      --tab-bg-active: var(--brand2);
+      --tab-text: var(--brand2);
+      --tab-text-active: #ffffff;
+    }
+  
+    /* Título del sitio (h1) y subtítulo */
+    h1 { color: var(--brand2); }
+  
+    /* Título de cada sesión EN AZUL LASID */
+    .title { color: var(--brand2); }
+  
+    /* Estilo de pestañas (días) */
+    .tab {
+      background: var(--tab-bg);
+      color: var(--tab-text);
+      border: 1px solid var(--brand2);
+    }
+    .tab:hover { background: var(--tab-bg-hover); }
+    .tab.active {
+      background: var(--tab-bg-active);
+      color: var(--tab-text-active);
+      border-color: var(--tab-bg-active);
+    }
+  
+    /* Botones de controles */
+    .btn-outline-red  { color: var(--brand1); border-color: var(--brand1); background:#FFF5F7; }
+    .btn-outline-blue { color: var(--brand2); border-color: var(--brand2); background:#F4F7FB; }
+    .btn-solid-red    { color:#fff; background: var(--brand1); border-color: var(--brand1); }
+  
+    /* Logos patrocinador (altura máx 32px) */
+    .sponsor-badge img { max-height:32px; width:auto; height:auto; }
+  </style>
+  <!-- Punto de montaje -->
+<div id="lasid-program-mount"></div>
+
+<script data-cfasync="false">
+(function(){
+  // ===== Config =====
+  const JSON_URL = "https://lasid.org/wp-content/uploads/json/program_lasid_2025_updated.json";
+  const BRAND1 = "#A92947"; // rojo LASID
+  const BRAND2 = "#224C87"; // azul LASID
+  const DAY_LABELS = {
+    educational_day: "Wednesday, October 15 — Educational Day",
+    october_16: "Thursday, October 16",
+    october_17: "Friday, October 17",
+    october_18: "Saturday, October 18"
+  };
+
+  // ===== Shadow DOM (aislado) =====
+  const mount = document.getElementById("lasid-program-mount");
+  if (!mount) return;
+  const host = document.createElement("div");
+  mount.appendChild(host);
+  const root = host.attachShadow({mode:"open"});
+
+  root.innerHTML = `
+    <style>
+  /* Variables y reset dentro del Shadow DOM */
+  :host {
+    /* Colores LASID */
+    --brand1: #A92947; /* rojo */
+    --brand2: #224C87; /* azul */
+
+    /* Radios y helpers */
+    --radius: 14px;
+
+    /* Paleta para tabs */
+    --tab-bg: #F4F7FB;         /* inactiva */
+    --tab-bg-hover: #E9F0FA;   /* hover inactiva */
+    --tab-bg-active: var(--brand2);
+    --tab-text: var(--brand2);
+    --tab-text-active: #ffffff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* App base (estética v2) */
+  .app { 
+    font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; 
+    color:#0f172a; 
+  }
+  header { margin-bottom: 14px; }
+  h1 { 
+    margin:0; 
+    font-weight: 900; 
+    color: var(--brand2); 
+    font-size: clamp(26px, 3.4vw, 34px); 
+  }
+  .sub { color:#475569; font-size: 13px; margin-top: 4px; }
+
+  /* Controles */
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin: 14px 0 16px; }
+  .search {
+    flex:1 1 260px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px;
+    outline: none; font-size: 14px; background:#fff;
+  }
+  .search:focus { border-color: var(--brand2); box-shadow: 0 0 0 3px rgba(34,76,135,0.25); }
+
+  .btn { 
+    padding:10px 12px; border-radius:10px; border:1px solid transparent;
+    background:#fff; cursor:pointer; transition:.15s ease-in-out;
+    font-weight: 600; font-size: 14px;
+  }
+  /* Inactivos (contorno) con fondo suave para contraste sobre fondo blanco del sitio */
+  .btn-outline-red { color: var(--brand1); border-color: var(--brand1); background: #FFF5F7; }
+  .btn-outline-red:hover { background: #FFE8ED; }
+  .btn-outline-blue { color: var(--brand2); border-color: var(--brand2); background: #F4F7FB; }
+  .btn-outline-blue:hover { background: #E9F0FA; }
+  /* Activo (sólido) */
+  .btn-solid-red { color:#fff; background: var(--brand1); border-color: var(--brand1); }
+
+  /* Tabs por día (con buen contraste) */
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 16px; }
+  .tab {
+    padding:8px 14px; border-radius:999px; border:1px solid var(--brand2);
+    background: var(--tab-bg); color: var(--tab-text); cursor:pointer; 
+    font-weight:700; font-size: 13px;
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .tab:hover { background: var(--tab-bg-hover); }
+  .tab.active {
+    background: var(--tab-bg-active);
+    color: var(--tab-text-active);
+    border-color: var(--tab-bg-active);
+  }
+
+  /* Encabezado del día */
+  .day-title {
+    font-size: clamp(18px, 2.4vw, 22px);
+    font-weight: 900; color: var(--brand2);
+    border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:12px;
+  }
+
+  /* Tarjetas */
+  .list { display:flex; flex-direction:column; gap:12px; }
+  .card {
+    position:relative; border:1px solid #e2e8f0; border-left:4px solid var(--brand1);
+    background:#fff; border-radius: var(--radius); 
+    padding:12px 12px 40px 12px; /* espacio para logo abajo-dcha */
+    box-shadow: 0 1px 2px rgba(0,0,0,.04); overflow:hidden;
+  }
+  .card:hover { box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+  .fav-ring { 
+    box-shadow: 0 0 0 2px var(--brand1) inset, 0 0 0 2px rgba(169,41,71,0.3); 
+    background: #fff5f7; 
+  }
+
+  /* Tipografías (v2) */
+  .time { 
+    display:flex; align-items:center; gap:6px; 
+    color: var(--brand2); font-weight: 700; font-size: 13px; 
+  }
+  .title { 
+    margin: 4px 0 0; 
+    font-size: clamp(20px, 2.6vw, 24px); 
+    font-weight: 900; 
+    color: var(--brand2);  /* Título en azul LASID */
+    cursor:pointer; 
+  }
+  .speaker { 
+    margin-top:4px; font-size: 13px; font-style: italic; color:#334155; 
+    display:flex; gap:6px; align-items:flex-start; 
+  }
+  .chair { margin-top:2px; font-size: 13px; color:#475569; }
+  .chair b { color:#334155; }
+
+  .meta { margin-top:8px; color:#475569; font-size: 12px; display:flex; flex-wrap:wrap; gap:12px; }
+
+  /* Favoritos */
+  .fav { position:absolute; top:8px; right:8px; padding:6px; border-radius:10px; background: transparent; border:0; cursor:pointer; }
+  .fav:hover { background: #ffe4e8; }
+  .fav svg { width:20px; height:20px; display:block; }
+  .fav .off { color:#94a3b8; }
+  .fav .on  { color: var(--brand1); }
+
+  /* Badge de patrocinador (logo máx 32px de alto) */
+  .sponsor-badge {
+    position:absolute; right:10px; bottom:8px;
+    background: rgba(255,255,255,.9); border:1px solid #e2e8f0; border-radius:10px;
+    padding:4px 6px; display:flex; align-items:center; gap:6px;
+  }
+  .sponsor-badge img { display:block; height:auto; max-height:32px; width:auto; }
+
+  /* Mensaje de error */
+  .error { margin-top: 12px; padding: 10px; border-radius: 10px; border:1px solid #fecaca; background:#fff1f2; color:#991b1b; font-size:13px; }
+  .hidden { display:none; }
+
+  /* Anim de enfoque al navegar por hash */
+  .focus-pulse { animation: focusPulse 1.1s ease-in-out 1; }
+  @keyframes focusPulse {
+    0%{ box-shadow: 0 0 0 0 rgba(169,41,71,0); }
+    40%{ box-shadow: 0 0 0 6px rgba(169,41,71,.25); }
+    100%{ box-shadow: 0 0 0 0 rgba(169,41,71,0); }
+  }
+
+  /* Contenedor/espaciado */
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+</style>
+
+
+    <div class="app wrap">
+      <header>
+        <h1>LASID Meeting 2025 — Scientific Program</h1>
+        <div class="sub">Search, favorites, deep links, and sponsor logos.</div>
+      </header>
+
+      <div class="controls">
+        <input id="search" type="search" placeholder="Search title / speaker / moderator…" class="search" />
+        <button id="favToggle" class="btn btn-outline-red">
+          <span style="display:inline-flex;align-items:center;gap:6px;">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+              <path d="M12 21s-6.716-4.476-9.193-8.14C1 10.5 2 7 5.25 6 7.5 5.32 9.5 6.5 12 9c2.5-2.5 4.5-3.68 6.75-3 3.25 1 4.25 4.5 2.443 6.86C18.716 16.524 12 21 12 21Z"/>
+            </svg> Favorites
+          </span>
+        </button>
+        <button id="reset" class="btn btn-outline-blue">Reset</button>
+      </div>
+
+      <div id="tabs" class="tabs"></div>
+      <div id="content"></div>
+      <div id="error" class="error hidden"></div>
+    </div>
+  `;
+
+  // ===== Utils (scoped al Shadow) =====
+  const $ = sel => root.querySelector(sel);
+  const el = (tag, cls="", html="") => { const n=document.createElement(tag); if(cls) n.className=cls; if(html) n.innerHTML=html; return n; };
+  const cap = s => String(s||"").replace(/[_-]+/g," ").replace(/\b\w/g,m=>m.toUpperCase());
+  const dayLabel = k => DAY_LABELS[k] || cap(k);
+
+  let DATA = {};
+  let favorites = new Set(JSON.parse(localStorage.getItem("lasid_favs") || "[]"));
+  let onlyFavs = false;
+  let activeDay = null;
+  let idToDay = {};
+
+  function saveFavs(){ localStorage.setItem("lasid_favs", JSON.stringify([...favorites])); }
+  function isDayArray(arr){ return Array.isArray(arr) && arr.some(x => x && (x.title || x.time)); }
+
+  function normalizeSpeakerChair(s){
+    let speakerText = Array.isArray(s.speaker) ? s.speaker.join(", ") : (s.speaker || "");
+    const m = /^\s*chair:?\s*(.+)$/i.exec(speakerText);
+    if (m && !s.chair){ s.chair = m[1].trim(); speakerText = ""; }
+    s._speakerText = speakerText;
+    return s;
+  }
+
+  function visibleSessions(dayKey){
+    const q = ($("#search")?.value || "").trim().toLowerCase();
+    const list = (DATA[dayKey] || []);
+    return list.filter(s => {
+      if (onlyFavs && !favorites.has(s.id)) return false;
+      const t  = (s.title || "").toLowerCase();
+      const sp = (Array.isArray(s.speaker) ? s.speaker.join(", ") : (s.speaker || "")).toLowerCase();
+      const ch = (s.chair || "").toLowerCase();
+      const tm = (s.time || "").toLowerCase();
+      return !q || t.includes(q) || sp.includes(q) || ch.includes(q) || tm.includes(q);
+    });
+  }
+
+  function renderTabs(){
+    const tabs = $("#tabs"); if (!tabs) return;
+    tabs.innerHTML = "";
+    const keys = Object.keys(DATA);
+    const dayKeys = keys.filter(k => isDayArray(DATA[k]));
+    dayKeys.forEach(k => {
+      const b = el("button","tab"+(k===activeDay?" active":""), dayLabel(k));
+      b.onclick = () => { activeDay = k; renderDay(k, true); };
+      tabs.appendChild(b);
+    });
+
+    // Estado visual del toggle de favoritos
+    const favBtn = $("#favToggle");
+    if (favBtn){
+      favBtn.className = onlyFavs ? "btn btn-solid-red" : "btn btn-outline-red";
+    }
+  }
+
+  function sessionCard(s, dayKey){
+    const isFav = favorites.has(s.id);
+    const card = el("article","card" + (isFav ? " fav-ring" : ""));
+    card.id = `session-${s.id}`;
+    idToDay[card.id] = dayKey;
+
+    if (s.time){
+      const time = el("div","time", `
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+          <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm1 5h-2v6l5 3 .999-1.732L13 12.5V7Z"/>
+        </svg>
+        <span>${s.time}</span>
+      `);
+      card.appendChild(time);
+    }
+
+    const title = el("h3","title");
+    title.textContent = s.title || "(Untitled)";
+    title.onclick = () => {
+      const newHash = card.id;
+      if (location.hash !== `#${newHash}`) history.replaceState(null,"", `#${newHash}`);
+      card.classList.add("focus-pulse"); setTimeout(()=>card.classList.remove("focus-pulse"), 950);
+    };
+    card.appendChild(title);
+
+    if (s._speakerText){
+      const sp = el("div","speaker", `
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+          <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm-7 9a7 7 0 1 1 14 0H5Z"/>
+        </svg>
+        <span>${s._speakerText}</span>
+      `);
+      card.appendChild(sp);
+    }
+
+    if (s.chair){
+      const ch = el("div","chair", `<b>Moderator:</b> ${s.chair}`);
+      card.appendChild(ch);
+    }
+
+    const meta = [];
+    if (s.track) meta.push(`<b>Track:</b> ${s.track}`);
+    if (s.room)  meta.push(`<b>Room:</b> ${s.room}`);
+    if (s.type)  meta.push(`<b>Type:</b> ${s.type}`);
+    if (s.notes) meta.push(`<b>Notes:</b> ${s.notes}`);
+    if (meta.length){
+      const m = el("div","meta", meta.map(x=>`<span>${x}</span>`).join(""));
+      card.appendChild(m);
+    }
+
+    if (s.sponsor_logo){
+      const badge = el("div","sponsor-badge","");
+      const img = el("img"); img.src = s.sponsor_logo; img.alt="Sponsor"; img.loading="lazy";
+      badge.appendChild(img);
+      card.appendChild(badge);
+    }
+
+    const favBtn = el("button","fav", `
+      <svg viewBox="0 0 24 24" fill="currentColor" class="${isFav?'on':'off'}" aria-hidden="true">
+        <path d="M12 21s-6.716-4.476-9.193-8.14C1 10.5 2 7 5.25 6 7.5 5.32 9.5 6.5 12 9c2.5-2.5 4.5-3.68 6.75-3 3.25 1 4.25 4.5 2.443 6.86C18.716 16.524 12 21 12 21Z"/>
+      </svg>
+    `);
+    favBtn.title = isFav ? "Remove from favorites" : "Add to favorites";
+    favBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      if (favorites.has(s.id)) favorites.delete(s.id); else favorites.add(s.id);
+      saveFavs(); renderDay(dayKey);
+    };
+    card.appendChild(favBtn);
+
+    card.addEventListener("click",(ev)=>{
+      if (ev.target.closest("button,a")) return;
+      const newHash = card.id;
+      if (location.hash !== `#${newHash}`) history.replaceState(null,"", `#${newHash}`);
+    });
+
+    return card;
+  }
+
+  function renderDay(dayKey, scrollTop=false){
+    renderTabs();
+    const content = $("#content"); if (!content) return;
+    content.innerHTML = "";
+
+    const h = el("div","day-title", dayLabel(dayKey));
+    content.appendChild(h);
+
+    const list = (visibleSessions(dayKey)||[]).map(normalizeSpeakerChair);
+    if (!list.length){
+      content.appendChild(el("div","sub","No sessions found for current filters."));
+      return;
+    }
+    const ul = el("div","list","");
+    list.forEach(s => ul.appendChild(sessionCard(s, dayKey)));
+    content.appendChild(ul);
+
+    if (scrollTop) root.host.scrollIntoView({behavior:"smooth", block:"start"});
+
+    const cur = (location.hash||"").replace("#","");
+    if (cur){
+      const target = root.getElementById?.(cur) || root.querySelector("#"+CSS.escape(cur));
+      if (target){ target.classList.add("focus-pulse"); setTimeout(()=>target.classList.remove("focus-pulse"), 1000); }
+    }
+  }
+
+  async function boot(){
+    const err = $("#error");
+    try{
+      const res = await fetch(JSON_URL + (JSON_URL.includes("?")?"&":"?") + "nocache=" + Date.now(), {cache:"no-store"});
+      if (!res.ok) throw new Error("HTTP "+res.status);
+      const raw = await res.json();
+
+      const keys = Object.keys(raw||{});
+      const dayKeys = keys.filter(k => isDayArray(raw[k]));
+      if (!dayKeys.length) throw new Error("No day arrays found in JSON.");
+
+      DATA = {};
+      idToDay = {};
+      dayKeys.forEach(k => {
+        DATA[k] = (raw[k]||[]).filter(Boolean);
+        DATA[k].forEach(s => { if (s && s.id) idToDay[`session-${s.id}`]=k; });
+      });
+
+      const hash = (location.hash||"").replace("#","");
+      const hashDay = idToDay[hash];
+      activeDay = hashDay || dayKeys[0];
+
+      renderDay(activeDay);
+      if (hashDay && hashDay !== activeDay){ activeDay = hashDay; renderDay(activeDay); }
+
+      if (err){ err.classList.add("hidden"); err.textContent=""; }
+    }catch(e){
+      if (err){ err.classList.remove("hidden"); err.textContent = "Could not load the JSON. Details: " + (e.message || e); }
+      console.error(e);
+    }
+  }
+
+  // Eventos
+  $("#favToggle")?.addEventListener("click", ()=>{ onlyFavs = !onlyFavs; renderDay(activeDay); });
+  $("#search")?.addEventListener("input", ()=> renderDay(activeDay));
+  $("#reset")?.addEventListener("click", ()=>{
+    const s = $("#search"); if (s) s.value="";
+    onlyFavs = false;
+    history.replaceState(null,"", location.pathname + location.search);
+    activeDay = Object.keys(DATA).find(k=>isDayArray(DATA[k])) || activeDay;
+    renderDay(activeDay, true);
+  });
+  window.addEventListener("hashchange", ()=>{
+    const hash = (location.hash||"").replace("#","");
+    const k = idToDay[hash];
+    if (k){ activeDay = k; renderDay(k); }
+  });
+
+  // Arranque
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", boot, {once:true});
+  } else {
+    boot();
+  }
+})();
+</script>
